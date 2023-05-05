@@ -1,0 +1,71 @@
+﻿@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+@if (order != null)
+{
+    <RadzenTemplateForm TItem="Order" Data=@order Submit=@SubmitFun>
+        <RadzenStack Gap="1.5rem">
+            <RadzenFormField Text="Customer ID">
+                <RadzenTextBox @bind-Value="order.CustomerId" />
+                @if (visible)
+                {
+                    <RadzenLabel Text="CustomerID Foreign Key should exist in Customers Table." Style="color: red; position:absolute; top:40px;" />
+                }                
+            </RadzenFormField>
+            <RadzenFormField Text="Employee ID">
+                <RadzenNumeric @bind-Value="order.EmployeeId" />
+            </RadzenFormField>
+            <RadzenFormField Text="Order Date">
+                <RadzenDatePicker @bind-Value="order.OrderDate" />
+            </RadzenFormField>
+            <RadzenFormField Text="Required Date">
+                <RadzenDatePicker @bind-Value="order.RequiredDate" />
+            </RadzenFormField>
+            <RadzenFormField Text="Shipped Date">
+                <RadzenDatePicker @bind-Value="order.ShippedDate" />
+            </RadzenFormField>
+            <RadzenFormField Text="Ship Via">
+                <RadzenNumeric @bind-Value="order.ShipVia" />
+            </RadzenFormField>
+            <RadzenFormField Text="Freight">
+                <RadzenNumeric @bind-Value="order.Freight" />
+            </RadzenFormField>
+            <RadzenFormField Text="Ship Name">
+                <RadzenTextBox @bind-Value="order.ShipName" />
+            </RadzenFormField>
+            <RadzenFormField Text="Ship Address">
+                <RadzenTextBox @bind-Value="order.ShipAddress" />
+            </RadzenFormField>
+            <RadzenFormField Text="Ship City">
+                <RadzenTextBox @bind-Value="order.ShipCity" />
+            </RadzenFormField>
+            <RadzenFormField Text="Ship Postal Code">
+                <RadzenTextBox @bind-Value="order.ShipPostalCode" />
+            </RadzenFormField>        
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenButton Text="Submit" Type="" Style="width: 100px;" />
+                    <RadzenButton Text="Cancel" Click=@CancelFun ButtonStyle="ButtonStyle.Light" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+}
+
+@code {
+    [Parameter] public bool visible { get; set; }
+    [Parameter] public Order order { get; set; }
+    [Parameter] public EventCallback Submit { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+
+    private async Task SubmitFun()
+    {
+        await Submit.InvokeAsync();
+    }
+
+    private async Task CancelFun()
+    {
+        await Cancel.InvokeAsync();
+    }
+}

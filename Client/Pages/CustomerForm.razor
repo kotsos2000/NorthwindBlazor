@@ -1,0 +1,82 @@
+﻿@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+@if (customer != null)
+{
+    <RadzenTemplateForm TItem="CustomerDTO" Data=@customer Submit=@SubmitFun>
+        <RadzenStack Gap="1.5rem">
+            @if (request == "POST")
+            {
+                <RadzenFormField Text="Customer ID">
+                    <RadzenTextBox @bind-Value="customer.CustomerId" />
+                    @if (IDmistake)
+                    {
+                        <RadzenLabel Text="CustomerID must be a unique string of 5 characters." Style="color: red; position:absolute; top:40px;" />
+
+                    }
+                </RadzenFormField>
+            }
+            <RadzenFormField Text="Company Name">
+                <RadzenTextBox @bind-Value="customer.CompanyName" />
+                @if (Namemistake)
+                {
+                    <RadzenLabel Text="Company Name is required." Style="color: red; position:absolute; top:40px;" />
+
+                }
+            </RadzenFormField>
+            <RadzenFormField Text="Contact Name">
+                <RadzenTextBox @bind-Value="customer.ContactName" />
+            </RadzenFormField>
+            <RadzenFormField Text="Contact Title">
+                <RadzenTextBox @bind-Value="customer.ContactTitle" />
+            </RadzenFormField>
+            <RadzenFormField Text="Address">
+                <RadzenTextBox @bind-Value="customer.Address" />
+            </RadzenFormField>
+            <RadzenFormField Text="City">
+                <RadzenTextBox @bind-Value="customer.City" />
+            </RadzenFormField>
+            <RadzenFormField Text="Region">
+                <RadzenTextBox @bind-Value="customer.Region" />
+            </RadzenFormField>
+            <RadzenFormField Text="Postal Code">
+                <RadzenTextBox @bind-Value="customer.PostalCode" />
+            </RadzenFormField>
+            <RadzenFormField Text="Country">
+                <RadzenTextBox @bind-Value="customer.Country" />
+            </RadzenFormField>
+            <RadzenFormField Text="Phone">
+                <RadzenTextBox @bind-Value="customer.Phone" />
+            </RadzenFormField>
+            <RadzenFormField Text="Fax">
+                <RadzenTextBox @bind-Value="customer.Fax" />
+            </RadzenFormField>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenButton Text="Submit" Type="" Style="width: 100px;" />
+                    <RadzenButton Text="Cancel" Click=@CancelFun ButtonStyle="ButtonStyle.Light" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+}
+
+@code {
+    [Parameter] public string request { get; set; }
+    [Parameter] public bool IDmistake { get; set; }
+    [Parameter] public bool Namemistake { get; set; }
+    [Parameter] public CustomerDTO customer { get; set; }
+    [Parameter] public EventCallback Submit { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+
+    private async Task SubmitFun()
+    {
+        await Submit.InvokeAsync();
+    }
+
+    private async Task CancelFun()
+    {
+        await Cancel.InvokeAsync();
+    }
+}

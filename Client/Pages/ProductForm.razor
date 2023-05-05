@@ -1,0 +1,64 @@
+﻿@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+@if (product != null)
+{
+    <RadzenTemplateForm TItem="Product" Data=@product Submit=@SubmitFun>
+        <RadzenStack Gap="1.5rem">
+            <RadzenFormField Text="Product Name">
+                <RadzenTextBox @bind-Value="product.ProductName" />
+                <RadzenRequiredValidator Text="Product Name is required" />
+            </RadzenFormField>
+            <RadzenFormField Text="Supplier ID">
+                <RadzenNumeric @bind-Value="product.SupplierId" />
+            </RadzenFormField>
+            <RadzenFormField Text="Category ID">
+                <RadzenNumeric @bind-Value="product.CategoryId" />
+            </RadzenFormField>
+            <RadzenFormField Text="Quantity Per Unit">
+                <RadzenTextBox @bind-Value="product.QuantityPerUnit" />
+            </RadzenFormField>
+            <RadzenFormField Text="Unit Price">
+                <RadzenNumeric @bind-Value="product.UnitPrice" />
+            </RadzenFormField>
+            <RadzenFormField Text="Units In Stock">
+                <RadzenNumeric @bind-Value="product.UnitsInStock" />
+            </RadzenFormField>
+            <RadzenFormField Text="Units On Order">
+                <RadzenNumeric @bind-Value="product.UnitsOnOrder" />
+            </RadzenFormField>
+            <RadzenFormField Text="Reorder Level">
+                <RadzenNumeric @bind-Value="product.ReorderLevel" />
+            </RadzenFormField>
+            <RadzenFormField>
+                <div class="rz-p-2 rz-text-align-left">
+                    <RadzenCheckBox TValue="bool" @bind-Value="product.Discontinued" Name="DiscCheckBox" />
+                    <RadzenLabel Text="Discontinued" Component="DiscCheckBox" Style="margin-left: 8px; vertical-align: middle;" />
+                </div>
+            </RadzenFormField>
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                <RadzenStack Orientation="Orientation.Horizontal">
+                    <RadzenButton Text="Submit" Type="" Style="width: 100px;" />
+                    <RadzenButton Text="Cancel" Click=@CancelFun ButtonStyle="ButtonStyle.Light" />
+                </RadzenStack>
+            </RadzenStack>
+        </RadzenStack>
+    </RadzenTemplateForm>
+}
+
+@code {
+    [Parameter] public Product product { get; set; }
+    [Parameter] public EventCallback Submit { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+
+    private async Task SubmitFun()
+    {
+        await Submit.InvokeAsync();
+    }
+
+    private async Task CancelFun()
+    {
+        await Cancel.InvokeAsync();
+    }
+}

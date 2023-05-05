@@ -1,0 +1,27 @@
+﻿@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+<RadzenStack Gap="1.5rem">
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <RadzenStack Orientation="Orientation.Horizontal">
+            <RadzenButton Text="Ok" Click=@SubmitFun Style="width: 80px;" />
+            <RadzenButton Text="Cancel" Click=@CancelFun ButtonStyle="ButtonStyle.Light" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public EventCallback Delete { get; set; }
+    [Parameter] public EventCallback Cancel { get; set; }
+
+    private async Task SubmitFun()
+    {
+        await Delete.InvokeAsync();
+    }
+
+    private async Task CancelFun()
+    {
+        await Cancel.InvokeAsync();
+    }
+}

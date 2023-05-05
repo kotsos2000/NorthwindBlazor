@@ -1,0 +1,162 @@
+﻿@page "/Products"
+@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+<PageTitle>Northwind Products</PageTitle>
+
+<h1>Hello, welcome to Products page!</h1>
+
+@if(products.Count == 0)
+{
+    <div>Loading...</div>
+}
+else
+{
+    <RadzenDataGrid @ref="prodGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@products" TItem="Product" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        <HeaderTemplate>
+            <RadzenButton Text="Add Product" Click=CreateProduct />
+        </HeaderTemplate>
+        <Columns>
+            <RadzenDataGridColumn TItem="Product" Property="ProductId" Title="ID" Width="95px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="ProductName" Title="Name" Width="150px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="SupplierId" Title="SupplierID" Width="150px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="CategoryId" Title="CategoryID" Width="150px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="QuantityPerUnit" Title="Quantity" Width="190px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="UnitPrice" Title="Price" Width="120px" TextAlign="TextAlign.Center" FormatString="{0:€0.00}" />
+            <RadzenDataGridColumn TItem="Product" Property="UnitsInStock" Title="Stock" Width="120px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="UnitsOnOrder" Title="Units In Order" Width="180px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="ReorderLevel" Title="Reorder" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Product" Property="Discontinued" Title="Discontinued" Width="160px" TextAlign="TextAlign.Center" />
+            
+            <RadzenDataGridColumn TItem="Product" Context="productt" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="156px">
+                <Template Context="productt">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(() => EditRow(productt))" @onclick:stopPropagation="true"/>
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@( ()=> DeletePopup(productt))" @onclick:stopPropagation="true"/>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+
+@code{
+    // initialize grid in order to use functions
+    RadzenDataGrid<Product> prodGrid = new RadzenDataGrid<Product>();
+    // initialie product list
+    List<Product> products = new List<Product>();
+    // will be used in the form to add product
+    Product addProd = new Product();
+    // will be used in the form to edit product
+    Product editProd = new Product();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // get request to get all products
+        var result = await Http.GetFromJsonAsync<List<Product>>("/api/products");
+        if(result is not null)
+        {
+            products = result;
+        }
+    }
+
+    async Task DeletePopup(Product prod)
+    {
+        // open dialog, ok deletes product cancel closes popup
+        var result = await DialogService.OpenAsync($"Delete Product with ID {prod.ProductId}?", ds =>
+        @<DeleteForm Delete="() => DeleteRow(prod,ds)" Cancel="() => ds.Close(false)" />
+        );
+    }
+
+    async Task DeleteRow(Product prod,DialogService ds)
+    {
+        // delete endpoint, remove from list in order for the grid to change , show toast after
+        await Http.DeleteAsync($"/api/products/productid/{prod.ProductId}");
+        products.Remove(prod);
+        await prodGrid.Reload();
+        IToast.ShowError($"Product with ID {prod.ProductId} deleted.");
+        ds.Close(true);
+    }
+
+    async Task CreateHandler(DialogService ds)
+    {
+        // post endpoint
+        var response = await Http.PostAsJsonAsync("/api/products", addProd);
+        // there are no restraints so it will always succeed since it has name
+        if (response.IsSuccessStatusCode)
+        {
+            // reload list to get the new (last) element
+            List<Product> newprods = await Http.GetFromJsonAsync<List<Product>>("api/products");
+            if (newprods.Count > 0)
+            {
+                // add to list so it will be shown in the grid
+                products.Add(newprods.Last());
+            }
+            await prodGrid.Reload();
+            IToast.ShowSuccess($"Product with ID {newprods.Last().ProductId} created!");
+            addProd = new Product();
+            ds.Close(true);
+        }
+    }
+
+    async Task EditHandler(DialogService ds)
+    {
+        // put endpoint
+        var response = await Http.PutAsJsonAsync($"/api/products", editProd);
+        // there are no restraints so it will always succeed since it has name
+        if (response.IsSuccessStatusCode)
+        {
+            IToast.ShowSuccess($"Product with ID {editProd.ProductId} changed!");
+            int index = products.FindIndex(p => p.ProductId == editProd.ProductId);
+            products[index] = editProd;
+            await prodGrid.Reload();
+            editProd = new Product();
+            ds.Close(true);
+        }
+    }
+
+    void ClosePopup(DialogService ds)
+    {
+        // initialize addProd again and close popup
+        addProd = new Product();
+        ds.Close(true);
+    }
+
+    void CloseEditPopup(DialogService ds)
+    {
+        // editProd is initialized when clicking edit button so no need to do anything
+        ds.Close(true);
+    }
+
+    async Task CreateProduct()
+    {
+        // create dialog service with fields and create/cancel buttons
+        var result = await DialogService.OpenAsync("Add product", ds =>
+        // use the component I created which takes as argument a Product , a function for Submiting and a function for Closing
+        @<ProductForm product="@addProd" Submit="()=>CreateHandler(ds)" Cancel="()=>ClosePopup(ds)" /> 
+        );
+    }
+
+    async Task EditRow(Product prod)
+    {
+        // cant do editProd = prod because then they are the same variable so we changed the attributes one by one
+        editProd.SupplierId = prod.SupplierId;
+        editProd.ProductId = prod.ProductId;
+        editProd.ProductName = prod.ProductName;
+        editProd.UnitPrice = prod.UnitPrice;
+        editProd.QuantityPerUnit = prod.QuantityPerUnit;
+        editProd.Discontinued = prod.Discontinued;
+        editProd.CategoryId = prod.CategoryId;
+        editProd.ReorderLevel = prod.ReorderLevel;
+        editProd.UnitsInStock = prod.UnitsInStock;
+        editProd.UnitsOnOrder = prod.UnitsOnOrder;
+
+        // create dialog service with fields and create/cancel buttons
+        var result = await DialogService.OpenAsync("Edit product", ds =>
+        // use component again with different arguments
+        @<ProductForm product="@editProd" Submit="()=>EditHandler(ds)" Cancel="()=>CloseEditPopup(ds)" />
+        );
+    }
+ 
+}

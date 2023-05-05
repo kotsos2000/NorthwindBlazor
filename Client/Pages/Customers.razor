@@ -1,0 +1,172 @@
+﻿@page "/Customers"
+@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+<PageTitle>Northwind Customers</PageTitle>
+
+<h1>Hello, welcome to customers page!</h1>
+
+@if(customs.Count == 0)
+{
+    <div>Loading...</div>
+}
+else
+{
+    <RadzenDataGrid @ref="custGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@customs" TItem="CustomerDTO" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        <HeaderTemplate>
+            <RadzenButton Text="Add Customer" Click=CreateCustomer />
+        </HeaderTemplate>
+        <Columns>
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="CustomerId" Title="ID" Frozen="true" Width="95px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="CompanyName" Title="Company"  Width="160px" TextAlign="TextAlign.Center"/>
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="ContactName" Title="Contact Name" Width="170px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="ContactTitle" Title="Contact Title" Width="160px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="Address" Title="Address" Width="200px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="City" Title="City" Width="120px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="PostalCode" Title="Postal Code" Width="170px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="Country" Title="Country" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="Phone" Title="Phone" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="CustomerDTO" Property="Fax" Title="Fax" Width="140px" TextAlign="TextAlign.Center" />
+            
+            <RadzenDataGridColumn TItem="CustomerDTO" Context="customerr" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="140px">
+                <Template Context="customerr">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(() => EditRow(customerr))" @onclick:stopPropagation="true" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@( ()=> DeletePopup(customerr))" @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+
+@code{
+
+    // initialize grid
+    RadzenDataGrid<CustomerDTO> custGrid = new RadzenDataGrid<CustomerDTO>();
+    // initialize list of customers
+    List<CustomerDTO> customs = new List<CustomerDTO>();
+    // will be used in the form to add product
+    CustomerDTO addCust = new CustomerDTO();
+    // will be used in the form to edit product
+    CustomerDTO editCust = new CustomerDTO();
+    // needed to display error message in forms
+    bool wrongID = false;
+    bool EmptyName = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await Http.GetFromJsonAsync<List<CustomerDTO>>("/api/customers");
+
+        if(result is not null)
+        {
+            customs = result;
+        }
+    }
+
+    async Task DeleteRow(CustomerDTO cust, DialogService ds)
+    {
+        // delete endpoint, remove from list in order for the grid to change , show toast after
+        await Http.DeleteAsync($"/api/customers/customerid/{cust.CustomerId}");
+        customs.Remove(cust);
+        await custGrid.Reload();
+        IToast.ShowError($"Customer with ID {cust.CustomerId} deleted.");
+        ds.Close(true);
+    }
+
+    async Task DeletePopup(CustomerDTO cust)
+    {
+        // open dialog, ok deletes product cancel closes popup
+        var result = await DialogService.OpenAsync($"Delete Customer with ID {cust.CustomerId}?", ds =>
+        @<DeleteForm Delete="() => DeleteRow(cust,ds)" Cancel="() => ds.Close(false)"/>
+        );
+    }
+
+    async Task CreateHandler(DialogService ds)
+    {
+        // company name must not be empty or null
+        EmptyName = true ? (addCust.CompanyName is null || addCust.CompanyName == string.Empty ) : false;
+        // customerID must be a unique string of 5 characters, so we do 3 checks
+        // 1 check to see if its null , 1 check to see if its 5 characters long and 1 to see if its unique
+        bool IDexists = true ? customs.Where(c => c.CustomerId == addCust.CustomerId).ToList().Count() > 0 : false;
+        wrongID = true ? (addCust.CustomerId is null || addCust.CustomerId.Length!=5 || IDexists) : false;
+        // refresh form to display message
+        ds.Refresh();
+        // if any is wrong, dont do POST request
+        if (!EmptyName && !wrongID)
+        {
+            CustomerDTO newcust = new CustomerDTO();
+            // post endpoint
+            var response = await Http.PostAsJsonAsync("/api/customers", addCust);
+            // have already checked for the restraints
+            if (response.IsSuccessStatusCode)
+            {
+                // reload list to get the new customer
+                var newcustss = await Http.GetFromJsonAsync<CustomerDTO>($"api/customers/customerid/{addCust.CustomerId}");
+                customs.Add(newcustss);
+                await custGrid.Reload();
+                IToast.ShowSuccess($"Product with ID {newcust.CustomerId} created!");
+                addCust = new CustomerDTO();
+                ds.Close(true);
+            }
+        }
+    }
+
+    async Task CreateCustomer()
+    {
+        addCust = new CustomerDTO();
+        wrongID = false;
+        EmptyName = false;
+        // create dialog service with fields and create/cancel buttons
+        var result = await DialogService.OpenAsync("Add customer", ds =>
+        // use the component I created which takes as argument a Product , a function for Submiting and a function for Closing
+        @<CustomerForm customer="@addCust" Submit="()=>CreateHandler(ds)" Cancel="()=>ds.Close(true)" IDmistake=wrongID Namemistake=EmptyName request="POST" />
+        );        
+    }
+
+
+    async Task EditHandler(DialogService ds)
+    {
+        EmptyName = true ? (editCust.CompanyName is null || editCust.CompanyName == string.Empty) : false;
+        ds.Refresh();
+        if (!EmptyName)
+        {
+            // put endpoint
+            var response = await Http.PutAsJsonAsync($"/api/customers", editCust);
+            // there are no restraints so it will always succeed since it has name
+            if (response.IsSuccessStatusCode)
+            {
+                IToast.ShowSuccess($"Customer with ID {editCust.CustomerId} changed!");
+                int index = customs.FindIndex(c => c.CustomerId == editCust.CustomerId);
+                customs[index] = editCust;
+                await custGrid.Reload();
+                editCust = new CustomerDTO();
+                ds.Close(true);
+            }
+        }
+    }
+
+    async Task EditRow(CustomerDTO cust)
+    {
+        editCust.CustomerId = cust.CustomerId;
+        editCust.CompanyName = cust.CompanyName;
+        editCust.ContactName = cust.ContactName;
+        editCust.Address = cust.Address;
+        editCust.City = cust.Region;
+        editCust.Region = cust.Region;
+        editCust.PostalCode = cust.PostalCode;
+        editCust.Country = cust.Country;
+        editCust.Phone = cust.Phone;
+        editCust.Fax = cust.Fax;
+
+        wrongID = false;
+        EmptyName = false;
+        // create dialog service with fields and create/cancel buttons
+        var result = await DialogService.OpenAsync("Edit customer", ds =>
+            // use component again with different arguments
+        @<CustomerForm customer="@editCust" Submit="()=>EditHandler(ds)" Cancel="()=>ds.Close(true)" IDmistake=wrongID Namemistake=EmptyName request="PUT" />
+        );
+    }
+
+}

@@ -1,0 +1,132 @@
+﻿@page "/Orders"
+@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+<PageTitle>Northwind Orders</PageTitle>
+
+<h1>Hello, welcome to Orders page!</h1>
+
+@if(orders.Count == 0)
+{
+    <div>Loading...</div>
+}
+else
+{
+    <RadzenDataGrid @ref="orderGrid" AllowFiltering="true" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="true" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@orders" TItem="Order" ColumnWidth="300px" LogicalFilterOperator="LogicalFilterOperator.Or">
+        <HeaderTemplate>
+            <RadzenButton Text="Add Order" Click=CreateOrder />
+        </HeaderTemplate>
+        <Columns>
+            <RadzenDataGridColumn TItem="Order" Property="OrderId" Title="ID" Width="95px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="CustomerId" Title="Customer" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="EmployeeId" Title="Employee" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="OrderDate" Title="Ordered" Width="130px" TextAlign="TextAlign.Center" FormatString="{0:d}" />
+            <RadzenDataGridColumn TItem="Order" Property="RequiredDate" Title="Required" Width="140px" TextAlign="TextAlign.Center" FormatString="{0:d}" />
+            <RadzenDataGridColumn TItem="Order" Property="ShippedDate" Title="Shipped" Width="130px" TextAlign="TextAlign.Center" FormatString="{0:d}"/>
+            <RadzenDataGridColumn TItem="Order" Property="ShipVia" Title="Ship Via" Width="130px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="Freight" Title="Freight" Width="120px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="ShipName" Title="Ship Name" Width="150px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="ShipAddress" Title="Ship Address" Width="160px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="ShipCity" Title="Ship City" Width="140px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="Order" Property="ShipPostalCode" Title="Ship PC" Width="130px" TextAlign="TextAlign.Center" />
+
+            <RadzenDataGridColumn TItem="Order" Context="orderr" Filterable="false" Sortable="false" TextAlign="TextAlign.Right" Width="100px">
+                <Template Context="orderr">
+                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Variant="Variant.Flat" Shade="Shade.Lighter" Size="ButtonSize.Medium" class="my-1 ms-1" Click="@( ()=> DeletePopup(orderr))" @onclick:stopPropagation="true"/>
+                </Template>
+            </RadzenDataGridColumn>
+        </Columns>
+    </RadzenDataGrid>
+}
+
+
+@code{
+    // initialize grid in order to use functions
+    RadzenDataGrid<Order> orderGrid = new RadzenDataGrid<Order>();
+    // initialie product list
+    List<Order> orders = new List<Order>();
+    // will be used in the form to add product
+    Order addOrder = new Order();
+    // will be used in the form to edit product
+    Order editOrder = new Order();
+    // for FK constraint message
+    bool visibility = false;
+    // will need this list to do the FK check
+    List<CustomerDTO> customers = new List<CustomerDTO>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // get request to get all products
+        var result = await Http.GetFromJsonAsync<List<Order>>("/api/orders");
+        var result2 = await Http.GetFromJsonAsync<List<CustomerDTO>>("/api/customers");
+
+        if(result is not null)
+        {
+            orders = result;
+            customers = result2;
+        }
+    }
+
+    async Task DeletePopup(Order ord)
+    {
+        // open dialog, ok deletes product cancel closes popup
+        var result = await DialogService.OpenAsync($"Delete Order with ID {ord.OrderId}?", ds =>
+        @<DeleteForm Delete="() => DeleteRow(ord,ds)" Cancel="() => ds.Close(false)" />
+        );
+
+    }
+    async Task DeleteRow(Order order,DialogService ds)
+    {
+        // delete endpoint, remove from list in order for the grid to change , show toast after
+        await Http.DeleteAsync($"/api/orders/orderid/{order.OrderId}");
+        orders.Remove(order);
+        await orderGrid.Reload();
+        IToast.ShowError($"Order with ID {order.OrderId} deleted.");
+        ds.Close(true);
+    }
+
+    async Task CreateHandler(DialogService ds)
+    {
+
+        bool IDexists = true ? customers.Where(c => c.CustomerId == addOrder.CustomerId).ToList().Count() > 0 : false;
+
+        if(IDexists)
+        {
+            // post endpoint
+            var response = await Http.PostAsJsonAsync("/api/orders", addOrder);
+            // there are no restraints so it will always succeed since it has name
+            if (response.IsSuccessStatusCode)
+            {
+                // reload list to get the new (last) element
+                List<Order> neworders = await Http.GetFromJsonAsync<List<Order>>("api/orders");
+                if (neworders is not null)
+                {
+                    // add to list so it will be shown in the grid
+                    orders.Add(neworders.Last());
+                    await orderGrid.Reload();
+                    IToast.ShowSuccess($"Order with ID {neworders.Last().OrderId} created!");
+                    addOrder = new Order();
+                    ds.Close(true);
+                }
+            }
+        }
+        else
+        {
+            visibility = true;
+            ds.Refresh();
+        }
+    }
+
+    async Task CreateOrder()
+    {
+        visibility = false;
+        addOrder = new Order();
+        // create dialog service with fields and create/cancel buttons
+        var result = await DialogService.OpenAsync("Add Order", ds =>
+        // use the component I created which takes as argument a Product , a function for Submiting and a function for Closing
+        @<OrderForm order="@addOrder" Submit="() => CreateHandler(ds)" Cancel="()=>ds.Close(true)" visible=@visibility />
+    );
+    }
+}

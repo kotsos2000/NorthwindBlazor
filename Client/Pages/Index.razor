@@ -1,0 +1,27 @@
+﻿@page "/"
+@using NorthwindBlazor.Shared.Models;
+@inject HttpClient Http
+@inject DialogService DialogService
+
+
+<PageTitle>Northwind Homepage</PageTitle>
+<div class="homepage">
+
+    <h1>Hello, world! <img src="/db.jpg" style="width:80px; height:80px; " /> </h1>
+
+    <h2>Welcome to the Northwind database admin panel </h2>
+
+    <h2>where you can perform operations on the underlying tables*.</h2>
+
+    <h3>Use the menu to the left to navigate through the different tables.</h3>
+
+
+    <img src="/NorthwindSchema.png" />
+    <h5>*To use this app you need to have SSMS installed and have a local copy of Microsoft's Northwind DB. </h5>
+
+
+</div>
+
+@code{
+
+} 
